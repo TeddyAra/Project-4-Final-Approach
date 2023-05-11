@@ -27,14 +27,6 @@ public class MyGame : Game {
 
 		ControllerSetup();
 
-		sprite1 = new Sprite("solid.png");
-		AddChild(sprite1);
-        sprite1.SetOrigin(sprite1.width / 2, sprite1.height / 2);
-
-		sprite2 = new Sprite("solid.png");
-		AddChild(sprite2);
-		sprite2.SetOrigin(sprite2.width / 2, sprite2.height / 2);
-
 		for (int i = 0; i < width / 32; i++) {
 			solid = new Solid();
 			AddChild(solid);
@@ -71,9 +63,9 @@ public class MyGame : Game {
         AddChild(solid);
         solid.SetXY(game.width / 3 * 2, game.height / 3 * 2);
 
-        item = new Item();
+        item = new Item("areaBall", lines);
 		AddChild(item);
-		item.SetXY(game.width - 900, 200);
+		item.pos = new Vec2(game.width - 900, 200);
 
         player = new Player(joystickGuid, lines);
 		AddChild(player);
@@ -83,9 +75,10 @@ public class MyGame : Game {
     }
 
 	void Update() {
-		ReadController();
+        joystick.Acquire();
+        state = joystick.GetCurrentState();
 
-		camera.rotation = -player.rotation;
+        camera.rotation = -player.rotation;
 	}
 
 	static void Main() {
@@ -123,13 +116,4 @@ public class MyGame : Game {
 		joystick.Properties.BufferSize = 128;
 		joystick.Properties.DeadZone = 2000;
 	}
-
-	void ReadController() {
-		// Read controller input
-        joystick.Acquire();
-		state = joystick.GetCurrentState();
-
-        sprite1.SetXY(player.leftHandPos.x, player.leftHandPos.y);
-        sprite2.SetXY(player.rightHandPos.x, player.rightHandPos.y);
-    }
 }
