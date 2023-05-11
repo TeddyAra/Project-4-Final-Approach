@@ -34,6 +34,7 @@ public class Player : EasyDraw {
 
     Vec2 pos; // The body's position
     Vec2 vel; // The body's movement velocity
+    Vec2 force; // The force applied on the body
     int mass; // The body's mass
     float rotVel; // The body's rotation velocity
     public Vec2 rightHandPos; // The position of the right hand
@@ -52,18 +53,20 @@ public class Player : EasyDraw {
 
     Joystick joystick;
     JoystickState state;
+    VerletBody leftArm;
+    VerletBody rightArm;
 
     public Player(Guid joystickGuid, List<Line> lines) : base(2, 2) {
         myGame = (MyGame)game;
         this.lines = lines;
 
-        handMoveSpeed = 50;
+        handMoveSpeed = 10;
         armMaxDistance = 75;
         headMaxAngle = 45;
         tongueNumber = 10;
         tongueLength = 200;
 
-        pos = new Vec2(game.width / 2, game.height / 2);
+        pos = new Vec2(game.width / 2, 200);
         leftHandPos = pos - new Vec2(60, 0);
         rightHandPos = pos + new Vec2(60, 0);
 
@@ -72,6 +75,18 @@ public class Player : EasyDraw {
         joystick = new Joystick(new DirectInput(), joystickGuid);
         joystick.Properties.BufferSize = 128;
         joystick.Properties.DeadZone = 2000;
+
+        leftArm = new VerletBody();
+        rightArm = new VerletBody();
+
+        for (int i = 0; i < 3; i++) {
+            leftArm.AddPoint(new VerletPoint(width / 2, 100 + i * 50, i == 0));
+            rightArm.AddPoint(new VerletPoint(width / 2, 100 + i * 50, i == 0));
+            if (i > 0) {
+                leftArm.AddConstraint(i - 1, i, 1, true);
+                rightArm.AddConstraint(i - 1, i, 1, true);
+            }
+        }
     }
 
     void Update() {
@@ -80,6 +95,14 @@ public class Player : EasyDraw {
 
         joystick.Acquire();
         state = joystick.GetCurrentState();
+
+        if (state.Buttons[6]) {
+            rotation--;
+        }
+
+        if (state.Buttons[7]) {
+            rotation++;
+        }
 
         // Updates right hand position
         rightHandVel = new Vec2(state.Z - 65535 / 2, state.RotationZ - 65535 / 2);
@@ -118,21 +141,47 @@ public class Player : EasyDraw {
         }
 
         // Rotates arms
-        /*for (int i = 0; i < 3; i++) { 
-            
-        }*/
+        /*leftArm.UpdateVerlet();
+        leftArm.UpdateConstraints();
+        rightArm.UpdateVerlet();
+        rightArm.UpdateConstraints();*/
+
+        /*Vec2 leftShoulderPos = new Vec2(leftUpperArm.TransformPoint(0, 0).x, leftUpperArm.TransformPoint(0, 0).y);
+        Vec2 difference = leftHandPos - leftShoulderPos;
+        Vec2 elbowMidpoint = leftShoulderPos + difference / 2;
+        float distance = Mathf.Sqrt(Mathf.Pow(leftUpperArm.width, 2) - Mathf.Pow(elbowMidpoint.Length(), 2));
+        Vec2 elbow = elbowMidpoint + difference.Normal() * distance;
+        float angle1 = (elbow - leftShoulderPos).GetAngleDeg();
+        float angle2 = (leftShoulderPos - leftHandPos).GetAngleDeg();
+
+        Console.WriteLine($"Shoulder: {leftShoulderPos}");
+
+        leftUpperArm.rotation = angle1;
+        leftLowerArm.rotation = angle2;*/
 
         // Head controls
         if (state.Buttons[4] && head.rotation > -headMaxAngle) {
             head.rotation--;
             if (holdingItem)
                 heldItem.SetXY(tongueTip.x, tongueTip.y);
+            Line line = new Line(tongueTip.x, tongueTip.y, head.TransformPoint(0, 0).x, head.TransformPoint(0, 0).y);
+            for (int i = 0; i < lines.Count(); i++) {
+                if (lines[i].CheckIntersection(line)) {
+                    head.rotation++;
+                }
+            }
         }
 
         if (state.Buttons[5] && head.rotation < headMaxAngle) {
             head.rotation++;
             if (holdingItem)
                 heldItem.SetXY(tongueTip.x, tongueTip.y);
+            Line line = new Line(tongueTip.x, tongueTip.y, head.TransformPoint(0, 0).x, head.TransformPoint(0, 0).y);
+            for (int i = 0; i < lines.Count(); i++) {
+                if (lines[i].CheckIntersection(line)) {
+                    head.rotation--;
+                }
+            }
         }
 
         // Tongue controls
@@ -151,15 +200,14 @@ public class Player : EasyDraw {
 
         if (state.Buttons[0] && tongues[0].y < (tongues.Count() - 1) * (tongues[0].height - tongues[0].width / 2)) {
             if (againstSolid) {
-                pos += Vec2.GetUnitVectorDeg(head.rotation - 90) * tongueSpeed;
+                pos += Vec2.GetUnitVectorDeg(head.rotation - 90 + rotation) * tongueSpeed;
+                Console.WriteLine(Vec2.GetUnitVectorDeg(head.rotation - 90 + rotation) * tongueSpeed);
                 tongueLength += tongueSpeed;
             } else if (holdingItem) {
                 tongueLength += tongueSpeed;
                 heldItem.SetXY(tongueTip.x, tongueTip.y);
             }
         }
-
-        Console.WriteLine(heldItem);
 
         tongues[0].SetXY(0, tongueLength);
         for (int i = 0; i < tongues.Count(); i++) {
@@ -176,18 +224,38 @@ public class Player : EasyDraw {
         tongueTip = new Vec2(tongues[tongues.Count() - 1].TransformPoint(0, 0).x, tongues[tongues.Count() - 1].TransformPoint(0, 0).y) + tongueDirectionVec * tongues[0].height;
 
         againstSolid = false;
-        //holdingItem = false;
 
         for (int i = 0; i < lines.Count(); i++) {
             float projection = (lines[i].point2 - lines[i].point1).Normalized().Dot(tongueTip - new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y));
             Vec2 impactPoint = new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y) + (lines[i].point2 - lines[i].point1).Normalized() * projection;
 
             if (projection > 0 && projection < (lines[i].point1 - lines[i].point2).Length() && (impactPoint - tongueTip).Length() < 5) {
-                if (lines[i].item != null) {
+                if (lines[i].item != null && !holdingItem) {
                     holdingItem = true;
                     heldItem = lines[i].item;
                 } else {
                     againstSolid = true;
+                    vel = new Vec2(0, 0);
+                }
+            }
+
+            if (lines[i].solid != null) {
+                projection = (lines[i].point2 - lines[i].point1).Normalized().Dot(leftHandPos - new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y));
+                Vec2 point = lines[i].point1 + (lines[i].point2 - lines[i].point1).Normalized() * projection;
+                float distance = (leftHandPos - (point + new Vec2(lines[i].solid.x, lines[i].solid.y))).Length();
+                if (projection > 0 && projection < (lines[i].point1 - lines[i].point2).Length() && distance < 5) {
+                    force = oldLeftHandPos - leftHandPos;
+                    vel += force;
+                    pos += vel;
+                }
+
+                projection = (lines[i].point2 - lines[i].point1).Normalized().Dot(rightHandPos - new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y));
+                point = lines[i].point1 + (lines[i].point2 - lines[i].point1).Normalized() * projection;
+                distance = (rightHandPos - (point + new Vec2(lines[i].solid.x, lines[i].solid.y))).Length();
+                if (projection > 0 && projection < (lines[i].point1 - lines[i].point2).Length() && distance < 5) {
+                    force = oldRightHandPos - rightHandPos;
+                    vel += force;
+                    pos += vel;
                 }
             }
         }

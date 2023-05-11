@@ -8,12 +8,14 @@ public class Line : GameObject {
     public Vec2 point1;
     public Vec2 point2;
     public Item item;
+    public Solid solid;
 
-    public Line(float x1, float y1, float x2, float y2, Item item = null) : base() { 
+    public Line(float x1, float y1, float x2, float y2, Item item = null, Solid solid = null) : base() { 
         point1 = new Vec2(x1, y1);
         point2 = new Vec2(x2, y2);
 
         this.item = item;
+        this.solid = solid;
     }
 
     void Update() {
@@ -35,6 +37,7 @@ public class Line : GameObject {
         if (r < 0 || r > 1 || s < 0 || s > 1)
             return false;
 
+        Console.WriteLine("works");
         return true;
     }
 }

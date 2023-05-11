@@ -91,6 +91,9 @@
     <Compile Include="GXPEngine\SoLoud\SoloudSoundSystem.cs" />
     <Compile Include="Player.cs" />
     <Compile Include="Solid.cs" />
+    <Compile Include="VerletBody.cs" />
+    <Compile Include="VerletConstraint.cs" />
+    <Compile Include="VerletPoint.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
