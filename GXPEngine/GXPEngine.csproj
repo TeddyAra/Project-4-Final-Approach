@@ -45,11 +45,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Background.cs" />
+    <Compile Include="Door.cs" />
     <Compile Include="GXPEngine\AddOns\Gizmos.cs" />
     <Compile Include="GXPEngine\AddOns\SpriteBatch.cs" />
     <Compile Include="GXPEngine\AddOns\TiledLoader.cs" />
     <Compile Include="GXPEngine\AddOns\Vec2.cs" />
+    <Compile Include="Interactable.cs" />
     <Compile Include="Item.cs" />
+    <Compile Include="Level.cs" />
     <Compile Include="Line.cs" />
     <Compile Include="MyGame.cs" />
     <Compile Include="GXPEngine\Core\Canvas.cs" />
