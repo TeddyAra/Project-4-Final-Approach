@@ -18,9 +18,8 @@ public class Player : EasyDraw {
     AnimationSprite head2;
 
     MyGame myGame;
-    Line line;
-    List<Line> bodyLines;
     List<Line> lines;
+    public List<Item> items;
     public List<Interactable> interactables;
     bool againstSolid;
     bool holdingItem;
@@ -65,14 +64,41 @@ public class Player : EasyDraw {
     bool buttonReleased;
     bool buttonPressed;
     bool moving;
+    bool buttonReset;
+
+    Sprite pause;
+    Sprite controls;
+    Sprite menuSelect;
+    bool paused;
+    bool controlsEnabled;
+    int menuSelection;
+
+    Sprite ui1;
+    Sprite ui2;
+    Sprite ui3;
+    Sprite ui4;
+    Sprite barBackground;
+    public Sprite bar;
+    float percentage;
 
     Joystick joystick;
     JoystickState state;
+
+    Sound collect;
+    Sound codeCorrect;
+    Sound door;
+    Sound incorrect;
+    Sound button;
+    Sound hit;
+    Sound fold;
+    Sound tongueSound;
+    int tongueSoundPlaying;
 
     public Player(Guid joystickGuid, List<Line> lines, List<Interactable> interactables) : base(2, 2) {
         myGame = (MyGame)game;
         this.lines = lines;
         this.interactables = interactables;
+        items = new List<Item>();
         collectedMaps = new List<int>();
 
         newFont = new Font("good times rg.otf", 40);
@@ -115,24 +141,165 @@ public class Player : EasyDraw {
         game.LateAddChild(code);
         code.SetOrigin(code.width / 2, code.height / 2);
 
+        ui1 = new Sprite("map1ui.png");
+        game.LateAddChild(ui1);
+        ui1.SetOrigin(game.width / 2, game.height / 2);
+        ui1.alpha = 0;
+        ui2 = new Sprite("map2ui.png");
+        game.LateAddChild(ui2);
+        ui2.SetOrigin(game.width / 2, game.height / 2);
+        ui2.alpha = 0;
+        ui3 = new Sprite("map3ui.png");
+        game.LateAddChild(ui3);
+        ui3.SetOrigin(game.width / 2, game.height / 2);
+        ui3.alpha = 0;
+        ui4 = new Sprite("map4ui.png");
+        game.LateAddChild(ui4);
+        ui4.SetOrigin(game.width / 2, game.height / 2);
+        ui4.alpha = 0;
+        barBackground = new Sprite("barBackground.png");
+        game.LateAddChild(barBackground);
+        barBackground.SetOrigin(barBackground.width / 2, barBackground.height / 2);
+        bar = new Sprite("bar.png");
+        game.LateAddChild(bar);
+        bar.width = 0;
+
+        pause = new Sprite("pause.png");
+        game.LateAddChild(pause);
+        pause.SetOrigin(pause.width / 2, pause.height / 2);
+        controls = new Sprite("controls.png");
+        game.LateAddChild(controls);
+        controls.SetOrigin(controls.width / 2, controls.height / 2);
+        menuSelect = new Sprite("menuSelect.png");
+        game.LateAddChild(menuSelect);
+        menuSelect.SetOrigin(menuSelect.width / 2, menuSelect.height / 2);
+        menuSelection = 1;
+        pause.alpha = 0;
+        controls.alpha = 0;
+        menuSelect.alpha = 0;
+
         input = new List<int>();
         solution = new List<int> { 
             1, 5, 3, 9    
         };
+
+        collect = new Sound("collecting paper sound.wav", false, true);
+        codeCorrect = new Sound("correct code 3.wav", false, true);
+        incorrect = new Sound("incorrect code sound.wav", false, true);
+        button = new Sound("inserting a number possible.wav", false, true);
+        hit = new Sound("object hitting the surface.wav", false, true);
+        fold = new Sound("paper folding sound.wav", false, true);
+        tongueSound = new Sound("tongue_sticking_out_louder.wav", false, true);
     }
 
     void Update() {
         joystick.Acquire();
         state = joystick.GetCurrentState();
 
-        if (checkingMap)
+        if (paused)
+            Menu();
+        else if (checkingMap)
             MapUI();
-        if (codeInput)
+        else if (codeInput)
             CodeUI();
         else
             Play();
 
-        Console.WriteLine(pos.x);
+        if (collectedMaps.Count() == 0) {
+            ui1.alpha = 1;
+        } else if (collectedMaps.Count() == 1) {
+            ui1.alpha = 0;
+            ui2.alpha = 1;
+        } else if (collectedMaps.Count() == 2) {
+            ui2.alpha = 0;
+            ui3.alpha = 1;
+        } else if (collectedMaps.Count() == 3) {
+            ui3.alpha = 0;
+            ui4.alpha = 1;
+        }
+
+        ui1.SetXY(pos.x, pos.y);
+        ui2.SetXY(pos.x, pos.y);
+        ui3.SetXY(pos.x, pos.y);
+        ui4.SetXY(pos.x, pos.y);
+
+        barBackground.SetXY(pos.x, pos.y);
+        bar.SetXY(pos.x - 349, pos.y - game.height / 2 + 55);
+
+        myGame.camera.rotation = -rotation;
+    }
+
+    void Menu() {
+        if (!state.Buttons[1] && !state.Buttons[2] && !state.Buttons[9]) {
+            buttonPressed = false;
+        }
+            
+        if (!controlsEnabled) {
+            pause.alpha = 1;
+            controls.alpha = 0;
+            menuSelect.alpha = 1;
+            pause.SetXY(pos.x, pos.y);
+            controls.SetXY(pos.x, pos.y);
+
+            if ((state.Buttons[9] || state.Buttons[2]) && !buttonPressed) {
+                paused = false;
+                buttonPressed = true;
+                pause.alpha = 0;
+                menuSelect.alpha = 0;
+            }
+
+            if (state.Buttons[1] && !buttonPressed) {
+                button.Play();
+                if (menuSelection == 1) {
+                    paused = false;
+                    buttonPressed = true;
+                    pause.alpha = 0;
+                    menuSelect.alpha = 0;
+                } else if (menuSelection == 2) {
+                    controlsEnabled = true;
+                    buttonPressed = true;
+                } else if (menuSelection == 3) {
+                    // Settings
+                } else if (menuSelection == 4) {
+                    // Main menu
+                }
+            }
+
+            int arrowValue = state.PointOfViewControllers[0];
+            if (buttonReleased) {
+                if (arrowValue != -1) {
+                    button.Play();
+                    buttonReleased = false;
+                }
+
+                if (arrowValue == 0) {
+                    if (menuSelection > 1)
+                        menuSelection--;
+                } else if (arrowValue == 18000) {
+                    if (menuSelection < 4)
+                        menuSelection++;
+                }
+            }
+            if (arrowValue == -1)
+                buttonReleased = true;
+
+            menuSelect.SetXY(pos.x, pos.y - 120 + (menuSelection - 1) * 140);
+        } else {
+            controls.alpha = 1;
+            pause.alpha = 0;
+            menuSelect.alpha = 0;
+
+            if (state.Buttons[9] && !buttonPressed) {
+                paused = false;
+                buttonPressed = true;
+                controls.alpha = 0;
+            }
+
+            if (state.Buttons[2] && !buttonPressed) {
+                controlsEnabled = false;
+                buttonPressed = true;
+            }
+        }
     }
 
     void CodeUI() {
@@ -196,6 +363,7 @@ public class Player : EasyDraw {
                 if (input.Count() < 7) {
                     if (selection < 10) {
                         input.Add(selection);
+                        button.Play();
                     }
                     if (selection == 11) {
                         input.Add(0);
@@ -211,15 +379,17 @@ public class Player : EasyDraw {
                         }
 
                         if (correct) {
+                            codeCorrect.Play();
                             codeFinished = true;
                             for (int i = myGame.doors.Count() - 1; i > -1; i--) {
-                                Console.WriteLine(myGame.doors[i].type);
                                 if (myGame.doors[i].type == "door") {
                                     myGame.doors[i].Destroy();
+                                    bar.width = 560;
                                 }
                             }
                         } else {
                             input.Clear();
+                            incorrect.Play();
                         }
                     } else {
                         input.Clear();
@@ -274,6 +444,7 @@ public class Player : EasyDraw {
         if (state.Buttons[2]) {
             map.alpha = 0;
             checkingMap = false;
+            fold.Play();
         }
     }
 
@@ -302,7 +473,8 @@ public class Player : EasyDraw {
         rotation = bodyRotation;
         if (againstSolid) {
             pos.RotateAroundDeg((state.X - (65535 / 2)) / 30000, tongueTip);
-            if (Mathf.Abs(oldBodyRotation - bodyRotation) != 0) moving = true;
+            if (Mathf.Abs(oldBodyRotation - bodyRotation) != 0)
+                moving = true;
             if (BodyCollision()) {
                 bodyRotation -= (state.X - (65535 / 2)) / 30000;
                 rotation = bodyRotation;
@@ -314,53 +486,63 @@ public class Player : EasyDraw {
             rotation = bodyRotation;
         }
 
-        // Controlling tongue
-        if (state.Buttons[4]) { 
-            if (holdingItem) {
-                heldItem.vel = tongueTip - oldTongueTip;
-                holdingItem = false;
-                grabCooldown = 60;
+        // Grabbing mechanic
+        if (state.Buttons[5] && !buttonReset) {
+            buttonReset = true;
+            if (holdingItem || againstSolid) {
+                if (holdingItem) {
+                    heldItem.vel = tongueTip - oldTongueTip;
+                    holdingItem = false;
+                    grabCooldown = 60;
+                } else {
+                    againstSolid = false;
+                }
             } else {
-                againstSolid = false;
-            }
-        }
-
-        if (state.Buttons[5]) {
-            for (int i = 0; i < interactables.Count(); i++) {
-                if ((new Vec2(interactables[i].x, interactables[i].y) - tongueTip).Length() < interactables[i].size) {
-                    if (!interactables[i].done) {
-                        if (interactables[i].type == "map1") {
-                            collectedMaps.Add(1);
-                            interactables[i].done = true;
-                        } else if (interactables[i].type == "map2") {
-                            collectedMaps.Add(2);
-                            interactables[i].done = true;
-                        } else if (interactables[i].type == "map3") {
-                            collectedMaps.Add(3);
-                            interactables[i].done = true;
-                        } else if (interactables[i].type == "code") {
-                            codeInput = true;
-                            buttonPressed = true;
-                            selection = 5;
-                            code.alpha = 1;
+                for (int i = 0; i < interactables.Count(); i++) {
+                    if ((new Vec2(interactables[i].x, interactables[i].y) - tongueTip).Length() < interactables[i].size) {
+                        if (!interactables[i].done) {
+                            if (interactables[i].type == "map1") {
+                                collectedMaps.Add(1);
+                                interactables[i].done = true;
+                                if (bar.width < 500) 
+                                    bar.width += 140;
+                                collect.Play();
+                            } else if (interactables[i].type == "map2") {
+                                collectedMaps.Add(2);
+                                interactables[i].done = true;
+                                if (bar.width < 500)
+                                    bar.width += 140;
+                                collect.Play();
+                            } else if (interactables[i].type == "map3") {
+                                collectedMaps.Add(3);
+                                interactables[i].done = true;
+                                if (bar.width < 500)
+                                    bar.width += 140;
+                                collect.Play();
+                            } else if (interactables[i].type == "code") {
+                                codeInput = true;
+                                buttonPressed = true;
+                                selection = 5;
+                                code.alpha = 1;
+                            }
+                            goto skip;
                         }
-                        goto skip;
                     }
                 }
-            }
 
-            for (int i = 0; i < lines.Count(); i++) {
-                float projection = (lines[i].point2 - lines[i].point1).Normalized().Dot(tongueTip - new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y));
-                Vec2 impactPoint = new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y) + (lines[i].point2 - lines[i].point1).Normalized() * projection;
+                for (int i = 0; i < lines.Count(); i++) {
+                    float projection = (lines[i].point2 - lines[i].point1).Normalized().Dot(tongueTip - new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y));
+                    Vec2 impactPoint = new Vec2(lines[i].TransformPoint(0, 0).x + lines[i].point1.x, lines[i].TransformPoint(0, 0).y + lines[i].point1.y) + (lines[i].point2 - lines[i].point1).Normalized() * projection;
 
-                if (projection > 0 && projection < (lines[i].point1 - lines[i].point2).Length() && (impactPoint - tongueTip).Length() < 20) {
-                    if (lines[i].item != null) {
-                        if (!holdingItem) {
-                            holdingItem = true;
-                            heldItem = lines[i].item;
+                    if (projection > 0 && projection < (lines[i].point1 - lines[i].point2).Length() && (impactPoint - tongueTip).Length() < 20) {
+                        for (int j = 0; j < items.Count(); j++) {
+                            if ((tongueTip - new Vec2(items[j].x, items[j].y)).Length() < 20) {
+                                holdingItem = true;
+                                heldItem = items[j];
+                                goto skip;
+                            }
+                            againstSolid = true;
                         }
-                    } else {
-                        againstSolid = true;
                     }
                 }
             }
@@ -368,17 +550,31 @@ public class Player : EasyDraw {
 
     skip:
 
+        if (!state.Buttons[5]) {
+            buttonReset = false;
+        }
+
         if (state.Buttons[6]) {
+            if (tongueSoundPlaying < 0) {
+                tongueSound.Play();
+                tongueSoundPlaying = 80;
+            }
             if (againstSolid && tongues[0].y < (tongues.Count() - 1) * tongues[0].height - 15) { 
                 pos += Vec2.GetUnitVectorDeg(head1.rotation - 90 + rotation) * tongueSpeed;
                 tongueLength += tongueSpeed;
                 moving = true;
             } else if (!againstSolid && tongues[0].y < (tongues.Count() - 1) * tongues[0].height) {
                 tongueLength += tongueSpeed;
+                if (CheckCollision())
+                    tongueLength += tongueSpeed * 1.5f;
             }
         }
 
         if (state.Buttons[7] && tongues[0].y > 0) {
+            if (tongueSoundPlaying < 0) {
+                tongueSound.Play();
+                tongueSoundPlaying = 80;
+            }
             tongueLength -= tongueSpeed;
             if (againstSolid) {
                 pos -= Vec2.GetUnitVectorDeg(head1.rotation - 90 + rotation) * tongueSpeed;
@@ -386,6 +582,8 @@ public class Player : EasyDraw {
             } else if (CheckCollision())
                 tongueLength += tongueSpeed * 1.5f;
         }
+
+        tongueSoundPlaying--;
 
         if (holdingItem) {
             heldItem.pos = new Vec2(tongueTip.x, tongueTip.y);
@@ -401,8 +599,10 @@ public class Player : EasyDraw {
         }
 
         if (state.Buttons[3]) {
-            if (collectedMaps.Count() == 3) 
+            if (collectedMaps.Count() == 3) {
                 checkingMap = true;
+                fold.Play();
+            }
         }
 
         if (collectedMaps.Count() == 3)
@@ -412,6 +612,16 @@ public class Player : EasyDraw {
             body.SetCycle(0, 14);
         } else {
             body.SetCycle(14, 6);
+        }
+
+        if (state.Buttons[9] && !buttonPressed) {
+            paused = true;
+            controlsEnabled = false;
+            buttonPressed = true;
+        }
+
+        if (!state.Buttons[9]) {
+            buttonPressed = false;
         }
 
         body.Animate(0.15f);

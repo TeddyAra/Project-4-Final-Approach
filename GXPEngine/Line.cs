@@ -20,10 +20,6 @@ public class Line : GameObject {
         this.door = door;
     }
 
-    void Update() {
-
-    }
-
     public bool CheckIntersection(Line line) {
         float q = (point1.y - line.point1.y) * (line.point2.x - line.point1.x) - (point1.x - line.point1.x) * (line.point2.y - line.point1.y);
         float d = (point2.x - point1.x) * (line.point2.y - line.point1.y) - (point2.y - point1.y) * (line.point2.x - line.point1.x);

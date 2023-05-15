@@ -430,7 +430,7 @@ namespace TiledMapParser {
 					if (tileSet==null || tileSet.Image==null)
 						throw new Exception("The Tiled map contains unembedded tilesets (.tsx files) - please embed them in the map");
 
-					AnimationSprite Tile = new AnimationSprite(
+                    AnimationSprite Tile = new AnimationSprite(
 						Path.Combine(_foldername, tileSet.Image.FileName),
 						tileSet.Columns, tileSet.Rows,
 						-1, false, addColliders
