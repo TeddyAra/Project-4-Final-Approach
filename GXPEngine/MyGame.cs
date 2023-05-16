@@ -35,7 +35,7 @@ public class MyGame : Game {
 		interactables = new List<Interactable>();
 		doors = new List<Door>();
 
-        LoadLevel("tiledLevel.tmx");
+        LoadLevel("level.tmx");
 
         ControllerSetup();
 

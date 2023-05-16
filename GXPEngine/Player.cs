@@ -94,6 +94,10 @@ public class Player : EasyDraw {
     Sound tongueSound;
     int tongueSoundPlaying;
 
+    bool inComic;
+    Sprite comic;
+    int comicTimer;
+
     public Player(Guid joystickGuid, List<Line> lines, List<Interactable> interactables) : base(2, 2) {
         myGame = (MyGame)game;
         this.lines = lines;
@@ -190,12 +194,21 @@ public class Player : EasyDraw {
         hit = new Sound("object hitting the surface.wav", false, true);
         fold = new Sound("paper folding sound.wav", false, true);
         tongueSound = new Sound("tongue_sticking_out_louder.wav", false, true);
+
+        inComic = true;
+        comic = new Sprite("comic.png");
+        game.LateAddChild(comic);
+        comic.width = 1910;
+        comic.height = 2750;
+        comic.SetXY(pos.x - game.width / 2, pos.y - game.height / 2);
+        comicTimer = 556;
     }
 
     void Update() {
         joystick.Acquire();
         state = joystick.GetCurrentState();
 
+        
         if (paused)
             Menu();
         else if (checkingMap)
@@ -204,6 +217,11 @@ public class Player : EasyDraw {
             CodeUI();
         else
             Play();
+
+        if (inComic)
+            Comic();
+        else
+            comic.alpha = 0;
 
         if (collectedMaps.Count() == 0) {
             ui1.alpha = 1;
@@ -227,6 +245,13 @@ public class Player : EasyDraw {
         bar.SetXY(pos.x - 349, pos.y - game.height / 2 + 55);
 
         myGame.camera.rotation = -rotation;
+    }
+
+    void Comic() {
+        comic.y -= 3;
+        comicTimer--;
+        if (comicTimer == 0)
+            inComic = false;
     }
 
     void Menu() {
@@ -499,7 +524,8 @@ public class Player : EasyDraw {
                 }
             } else {
                 for (int i = 0; i < interactables.Count(); i++) {
-                    if ((new Vec2(interactables[i].x, interactables[i].y) - tongueTip).Length() < interactables[i].size) {
+                    if (interactables[i].type == "code") Console.WriteLine(interactables[i].size);
+                    if ((new Vec2(interactables[i].x, interactables[i].y) - tongueTip).Length() < 50) {
                         if (!interactables[i].done) {
                             if (interactables[i].type == "map1") {
                                 collectedMaps.Add(1);
@@ -541,8 +567,9 @@ public class Player : EasyDraw {
                                 heldItem = items[j];
                                 goto skip;
                             }
-                            againstSolid = true;
+                            //againstSolid = true;
                         }
+                        againstSolid = true;
                     }
                 }
             }
@@ -563,6 +590,11 @@ public class Player : EasyDraw {
                 pos += Vec2.GetUnitVectorDeg(head1.rotation - 90 + rotation) * tongueSpeed;
                 tongueLength += tongueSpeed;
                 moving = true;
+                if (BodyCollision()) {
+                    pos -= Vec2.GetUnitVectorDeg(head1.rotation - 90 + rotation) * tongueSpeed;
+                    tongueLength -= tongueSpeed;
+                    moving = false;
+                }
             } else if (!againstSolid && tongues[0].y < (tongues.Count() - 1) * tongues[0].height) {
                 tongueLength += tongueSpeed;
                 if (CheckCollision())
@@ -579,6 +611,11 @@ public class Player : EasyDraw {
             if (againstSolid) {
                 pos -= Vec2.GetUnitVectorDeg(head1.rotation - 90 + rotation) * tongueSpeed;
                 moving = true;
+                if (BodyCollision()) {
+                    pos += Vec2.GetUnitVectorDeg(head1.rotation - 90 + rotation) * tongueSpeed;
+                    tongueLength += tongueSpeed;
+                    moving = false;
+                }
             } else if (CheckCollision())
                 tongueLength += tongueSpeed * 1.5f;
         }

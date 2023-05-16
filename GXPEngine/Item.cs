@@ -16,6 +16,8 @@ public class Item : AnimationSprite {
     public Vec2 pos;
     public Vec2 vel;
     int radius;
+    bool closing;
+    int closeTimer;
 
     bool check;
     Sound door;
@@ -23,6 +25,7 @@ public class Item : AnimationSprite {
 
     public Item(string filename, int cols, int rows, TiledObject obj = null) : base(filename, cols, rows) {
         myGame = (MyGame)game;
+        closeTimer = 120;
 
         SetOrigin(width / 2, height / 2);
 
@@ -30,7 +33,7 @@ public class Item : AnimationSprite {
         this.pos = new Vec2(obj.X, obj.Y);
         radius = (int)obj.Width / 2;
 
-        /*line = new Line(-width / 2, -height / 2, width / 2, -height / 2, this);
+        line = new Line(-width / 2, -height / 2, width / 2, -height / 2, this);
         AddChild(line);
         myGame.lines.Add(line);
         line = new Line(width / 2, -height / 2, width / 2, height / 2, this);
@@ -41,7 +44,7 @@ public class Item : AnimationSprite {
         myGame.lines.Add(line);
         line = new Line(-width / 2, height / 2, -width / 2, -height / 2, this);
         AddChild(line);
-        myGame.lines.Add(line);*/
+        myGame.lines.Add(line);
 
         door = new Sound("door smashing sound.wav", false, true);
         bounce = new Sound("object hitting the surface.wav", false, true);
@@ -53,6 +56,12 @@ public class Item : AnimationSprite {
         SetXY(pos.x, pos.y);
         pos += vel;
         bounced--;
+
+        if (closing) {
+            closeTimer--;
+            if (closeTimer < 0)
+                Environment.Exit(1);
+        }
         
         if (!check) {
             if (myGame.player != null) {
@@ -73,7 +82,8 @@ public class Item : AnimationSprite {
                             bounce.Play();
                         bounced = 60;
 
-                        if (lines[i].door != null && lines[i].door.type == "goal" && type == "areaBall" && myGame.player.pos.x < 900) {
+                        if (lines[i].door != null && lines[i].door.type == "goal" && type == "areaBall") {
+                            closing = true;
                             myGame.player.bar.width = 700;
                             door.Play();
                             for (int j = myGame.doors.Count() - 1; j > -1; j--) {
